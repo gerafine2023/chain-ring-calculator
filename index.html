@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Ring Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1 id="title">Chain Ring Calculator</h1>
+        <select id="language-select">
+            <option value="en">English</option>
+            <option value="he">עברית</option>
+        </select>
+    </header>
+    <main>
+        <form id="calculator-form">
+            <label id="label-rings" for="rings">How many rings in the chain? (Leave empty to calculate):</label><br>
+            <input type="number" id="rings" placeholder="Number of Rings"><br>
+
+            <label id="label-cuts" for="cuts">How many cuts are allowed? (Leave empty to calculate):</label><br>
+            <input type="number" id="cuts" placeholder="Number of Cuts"><br>
+
+            <button type="button" id="start-btn">Start Calculation</button>
+            <button type="button" id="expand-btn">Expand Search</button>
+        </form>
+
+        <div id="logs" class="log-container">
+            <h2 id="logs-title">Logs</h2>
+        </div>
+
+        <div id="results" class="log-container">
+            <h2 id="results-title">Results</h2>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

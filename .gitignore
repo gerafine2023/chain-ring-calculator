@@ -1,0 +1,21 @@
+# Ignore all files and folders by default
+*
+
+# Allow only the main project files
+!index.html
+!script.js
+!styles.css
+
+# Ignore Python files
+*.py
+
+# Ignore text logs
+*.txt
+
+# Ignore specific folders
+bu2/
+working/
+workingheb/
+
+# Exclude .gitignore from being ignored
+!.gitignore
