@@ -137,6 +137,24 @@ footer {
     color: #888;
 }
 
+/* Loading Bar Styles */
+.loading-bar {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    height: 20px;
+    display: none; /* Hidden by default */
+    margin-bottom: 1rem;
+}
+
+.loading-progress {
+    height: 100%;
+    width: 0%;
+    background-color: #007bff;
+    transition: width 0.2s ease;
+}
+
 /* Media Queries for Responsiveness */
 @media (max-width: 768px) {
     header {
@@ -181,5 +199,9 @@ footer {
 
     .log-container {
         padding: 0.5rem;
+    }
+
+    .loading-bar {
+        height: 15px;
     }
 }

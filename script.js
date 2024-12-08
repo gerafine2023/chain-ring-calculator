@@ -18,6 +18,8 @@ const translations = {
         solution: "Solution {index}: Rings: {rings}, Removed: {removed}, Segments: {segments}",
         placeholderRings: "Number of Rings",
         placeholderCuts: "Number of Cuts",
+        starting: "Starting calculations...",
+        loading: "Calculating, please wait..."
     },
     he: {
         title: "מחשבון טבעות שרשרת",
@@ -35,6 +37,8 @@ const translations = {
         solution: "פתרון {index}: טבעות: {rings}, הוסרו: {removed}, קטעים: {segments}",
         placeholderRings: "מספר טבעות",
         placeholderCuts: "מספר חיתוכים",
+        starting: "מתחיל חישובים...",
+        loading: "מבצע חישוב, אנא המתן..."
     },
 };
 
@@ -60,49 +64,33 @@ const localize = (key, variables = {}) => {
     return str;
 };
 
-// Main calculator logic
-const calculateChains = (rings, cuts, maxRings) => {
+// Show loading bar
+const showLoading = () => {
+    document.getElementById("loading-bar").style.display = "block";
+    updateLoadingProgress(0);
+};
+
+// Update loading progress (0 to 100)
+const updateLoadingProgress = (percentage) => {
+    const progressBar = document.getElementById("loading-progress");
+    progressBar.style.width = `${percentage}%`;
+};
+
+// Hide loading bar
+const hideLoading = () => {
+    document.getElementById("loading-bar").style.display = "none";
+};
+
+// Main calculator logic (asynchronous)
+const calculateChains = async (rings, cuts, maxRings, onProgress) => {
     const results = [];
     const minRings = cuts ? cuts * 2 + 1 : 1;
 
-    const simulateCut = (totalRings, cutIndices) => {
-        let segments = [];
-        let removed = [];
-        let start = 1;
+    const totalRings = Math.max(minRings, rings || 0);
+    const totalSteps = maxRings - totalRings + 1;
+    let currentStep = 0;
 
-        cutIndices.forEach((cut) => {
-            if (cut > start) segments.push([...Array(cut - start).keys()].map(i => i + start));
-            removed.push([cut]);
-            start = cut + 1;
-        });
-
-        if (start <= totalRings) segments.push([...Array(totalRings - start + 1).keys()].map(i => i + start));
-
-        removed.forEach(ring => {
-            const idx = segments.findIndex(seg => seg[0] > ring[0]);
-            if (idx === -1) segments.push(ring);
-            else segments.splice(idx, 0, ring);
-        });
-
-        return { segments, removed };
-    };
-
-    const canGiveRings = (segments, target, used) => {
-        if (target === 0) return true;
-        if (segments.length === 0) return false;
-
-        for (let i = 0; i < segments.length; i++) {
-            if (used.has(i)) continue;
-            const len = segments[i].length;
-            if (len > target) continue;
-            used.add(i);
-            if (canGiveRings(segments, target - len, used)) return true;
-            used.delete(i);
-        }
-        return false;
-    };
-
-    for (let r = Math.max(minRings, rings || 0); r <= maxRings; r++) {
+    for (let r = totalRings; r <= maxRings; r++) {
         const maxCuts = cuts || Math.floor(r / 2);
         for (let c = 1; c <= maxCuts; c++) {
             addLog(localize("testing", { rings: r, cuts: c }));
@@ -125,6 +113,11 @@ const calculateChains = (rings, cuts, maxRings) => {
                 }
             }
         }
+        currentStep++;
+        const progress = Math.floor((currentStep / totalSteps) * 100);
+        onProgress(progress);
+        // Allow UI to update
+        await new Promise(resolve => setTimeout(resolve, 0));
     }
 
     return results;
@@ -138,6 +131,45 @@ const combinations = (arr, k) => {
     const withHead = combinations(tail, k - 1).map(c => [head, ...c]);
     const withoutHead = combinations(tail, k);
     return withHead.concat(withoutHead);
+};
+
+// Simulate cut operation
+const simulateCut = (totalRings, cutIndices) => {
+    let segments = [];
+    let removed = [];
+    let start = 1;
+
+    cutIndices.forEach((cut) => {
+        if (cut > start) segments.push([...Array(cut - start).keys()].map(i => i + start));
+        removed.push([cut]);
+        start = cut + 1;
+    });
+
+    if (start <= totalRings) segments.push([...Array(totalRings - start + 1).keys()].map(i => i + start));
+
+    removed.forEach(ring => {
+        const idx = segments.findIndex(seg => seg[0] > ring[0]);
+        if (idx === -1) segments.push(ring);
+        else segments.splice(idx, 0, ring);
+    });
+
+    return { segments, removed };
+};
+
+// Check if it's possible to give rings for a specific day
+const canGiveRings = (segments, target, used) => {
+    if (target === 0) return true;
+    if (segments.length === 0) return false;
+
+    for (let i = 0; i < segments.length; i++) {
+        if (used.has(i)) continue;
+        const len = segments[i].length;
+        if (len > target) continue;
+        used.add(i);
+        if (canGiveRings(segments, target - len, used)) return true;
+        used.delete(i);
+    }
+    return false;
 };
 
 // Group results by ring count
@@ -231,7 +263,7 @@ const updateLanguage = () => {
 };
 
 // Event listener for form submission
-document.getElementById("start-btn").addEventListener("click", () => {
+document.getElementById("start-btn").addEventListener("click", async () => {
     const ringsInput = document.getElementById("rings").value;
     const cutsInput = document.getElementById("cuts").value;
 
@@ -246,26 +278,47 @@ document.getElementById("start-btn").addEventListener("click", () => {
     maxRingsReached = rings || 20; // Reset the maximum rings reached
 
     addLog(localize("starting"));
-    const results = calculateChains(rings, cuts, maxRingsReached);
+    showLoading();
 
     const resultsContainer = document.getElementById("results");
     resultsContainer.innerHTML = ""; // Clear previous results
-    displayResults(results, resultsContainer, localize("resultsTitle"));
+
+    try {
+        const results = await calculateChains(rings, cuts, maxRingsReached, (progress) => {
+            updateLoadingProgress(progress);
+        });
+
+        displayResults(results, resultsContainer, localize("resultsTitle"));
+    } catch (error) {
+        addLog(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
 });
 
 // Expand search functionality
-document.getElementById("expand-btn").addEventListener("click", () => {
+document.getElementById("expand-btn").addEventListener("click", async () => {
     const cutsInput = document.getElementById("cuts").value;
     const cuts = parseInt(cutsInput) || null;
 
     const newMaxRings = maxRingsReached + 10; // Increment search range
     addLog(localize("expanding", { maxRings: newMaxRings }));
-
-    const results = calculateChains(maxRingsReached + 1, cuts, newMaxRings);
+    showLoading();
 
     const resultsContainer = document.getElementById("results");
-    displayResults(results, resultsContainer, `${localize("resultsTitle")} (up to ${newMaxRings})`);
-    maxRingsReached = newMaxRings; // Update maximum rings reached
+
+    try {
+        const results = await calculateChains(maxRingsReached + 1, cuts, newMaxRings, (progress) => {
+            updateLoadingProgress(progress);
+        });
+
+        displayResults(results, resultsContainer, `${localize("resultsTitle")} (up to ${newMaxRings})`);
+        maxRingsReached = newMaxRings; // Update maximum rings reached
+    } catch (error) {
+        addLog(`Error: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
 });
 
 // Initialize default language
